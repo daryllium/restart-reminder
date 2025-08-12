@@ -9,14 +9,36 @@
   Title="RestartReminder - Settings"
   mc:Ignorable="d"
 >
-  <Grid Padding="16" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
-    <TextBlock FontSize="20" FontWeight="SemiBold" Text="Restart Reminder Settings" />
+  <Grid Padding="16">
+    <TextBlock Grid.Row="0" FontSize="20" FontWeight="SemiBold" Text="Restart Reminder Settings" />
     <NumberBox
-      Width="200"
+      x:Name="UptimeBox"
+      Grid.Row="1"
       Margin="0,8,0,16"
-      Header="Reminder Interval (minutes)"
-      SpinButtonVisibility="Visible"
+      Header="Initial Reminder"
+      LargeChange="60"
+      Minimum="15"
+      SmallChange="15"
       Value="{Binding ReminderInterval, Mode=TwoWay}"
     />
+    <ToggleSwitch
+      x:Name="StartupToggle"
+      Grid.Row="2"
+      Margin="0,12,0,0"
+      Header="Run on Startup"
+      OffContent="Disabled"
+      OnContent="Enabled"
+    />
+    <StackPanel Grid.Row="3" Margin="0,12,0,0" Orientation="Horizontal" Spacing="0">
+      <TextBlock VerticalAlignment="Center" Text="Default snooze: " />
+      <ComboBox x:Name="SnoozeCombo" Width="140" SelectedIndex="1">
+        <ComboBoxItem Content="5 minutes" Tag="5" />
+        <ComboBoxItem Content="15 minutes" Tag="15" />
+        <ComboBoxItem Content="60 minutes" Tag="60" />
+      </ComboBox>
+      <Button Margin="16,0,0,0" Click="Save_Click" Content="Save" />
+      <Button Click="Reload_Click" Content="Reload" />
+    </StackPanel>
+    <TextBlock x:Name="StatusText" Grid.Row="4" Margin="0,12,0,0" TextWrapping="Wrap" />
   </Grid>
 </Window>
