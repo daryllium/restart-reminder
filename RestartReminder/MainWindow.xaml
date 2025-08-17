@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <Window
   x:Class="RestartReminder.MainWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -6,39 +5,95 @@
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:local="using:RestartReminder"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  Title="RestartReminder - Settings"
   mc:Ignorable="d"
 >
-  <Grid Padding="16">
-    <TextBlock Grid.Row="0" FontSize="20" FontWeight="SemiBold" Text="Restart Reminder Settings" />
-    <NumberBox
-      x:Name="UptimeBox"
-      Grid.Row="1"
-      Margin="0,8,0,16"
-      Header="Initial Reminder"
-      LargeChange="60"
-      Minimum="15"
-      SmallChange="15"
-      Value="{Binding ReminderInterval, Mode=TwoWay}"
-    />
-    <ToggleSwitch
-      x:Name="StartupToggle"
-      Grid.Row="2"
-      Margin="0,12,0,0"
-      Header="Run on Startup"
-      OffContent="Disabled"
-      OnContent="Enabled"
-    />
-    <StackPanel Grid.Row="3" Margin="0,12,0,0" Orientation="Horizontal" Spacing="0">
-      <TextBlock VerticalAlignment="Center" Text="Default snooze: " />
-      <ComboBox x:Name="SnoozeCombo" Width="140" SelectedIndex="1">
-        <ComboBoxItem Content="5 minutes" Tag="5" />
-        <ComboBoxItem Content="15 minutes" Tag="15" />
-        <ComboBoxItem Content="60 minutes" Tag="60" />
-      </ComboBox>
-      <Button Margin="16,0,0,0" Click="Save_Click" Content="Save" />
-      <Button Click="Reload_Click" Content="Reload" />
+  <Grid Padding="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <!--  Header  -->
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <SymbolIcon Symbol="Sync" />
+      <TextBlock FontSize="20" FontWeight="SemiBold" Text="Restart Reminder Settings" />
     </StackPanel>
-    <TextBlock x:Name="StatusText" Grid.Row="4" Margin="0,12,0,0" TextWrapping="Wrap" />
+    <!--  Content  -->
+    <StackPanel Grid.Row="1" Margin="0,16,0,0" Spacing="16">
+      <TextBlock FontWeight="SemiBold" Text="Reminder timing" />
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <StackPanel Width="220">
+          <TextBlock Text="Initial reminder (minutes)" />
+          <NumberBox
+            x:Name="InitialReminderMinutesNumberBox"
+            HorizontalAlignment="Stretch"
+            LargeChange="60"
+            Maximum="20160"
+            Minimum="15"
+            SmallChange="5"
+            SpinButtonPlacementMode="Inline"
+          />
+          <TextBlock
+            FontSize="12"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Text="15–20160 (14 days)."
+          />
+        </StackPanel>
+        <StackPanel Width="220">
+          <TextBlock Text="Default snooze (minutes)" />
+          <NumberBox
+            x:Name="SnoozeMinutesNumberBox"
+            HorizontalAlignment="Stretch"
+            LargeChange="15"
+            Maximum="240"
+            Minimum="5"
+            SmallChange="5"
+            SpinButtonPlacementMode="Inline"
+          />
+          <TextBlock
+            FontSize="12"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Text="5–240 (4 hours)."
+          />
+        </StackPanel>
+      </StackPanel>
+      <Border
+        Height="1"
+        Margin="0,12,0,12"
+        HorizontalAlignment="Stretch"
+        Background="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+      />
+      <StackPanel Spacing="8">
+        <TextBlock FontWeight="SemiBold" Text="Startup" />
+        <ToggleSwitch
+          x:Name="RunOnStartupToggle"
+          Header="Run on startup"
+          OffContent="Disabled"
+          OnContent="Enabled"
+        />
+        <TextBlock
+          FontSize="12"
+          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+          Text="When enabled, the app starts in the background after you sign in."
+        />
+      </StackPanel>
+      <InfoBar
+        x:Name="StatusInfoBar"
+        Title="Saved"
+        IsOpen="False"
+        Message="Your settings have been saved."
+        Severity="Success"
+      />
+    </StackPanel>
+    <!--  Footer buttons  -->
+    <StackPanel Grid.Row="2" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+      <Button x:Name="ResetButton" Click="OnResetClick" Content="Reset to defaults" />
+      <Button
+        x:Name="SaveButton"
+        Click="OnSaveClick"
+        Content="Save"
+        Style="{StaticResource AccentButtonStyle}"
+      />
+    </StackPanel>
   </Grid>
 </Window>

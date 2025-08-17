@@ -1,26 +1,25 @@
 ﻿using System;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
+using RestartReminder.Utilities;
+using Windows.ApplicationModel.Activation;
 
 namespace RestartReminder;
 
 public static class Program
 {
-    public static bool LaunchedByStartupTask { get; private set; }
-
     [STAThread]
     static void Main(string[] args)
     {
+        WinRT.ComWrappersSupport.InitializeComWrappers();
+
         if (RedirectIfNotMain())
             return;
 
-        var act = AppInstance.GetCurrent().GetActivatedEventArgs();
-        LaunchedByStartupTask = act.Kind == ExtendedActivationKind.StartupTask;
+        AppInstance.GetCurrent().Activated += (_, args) => App.ForwardedActivation(args);
 
-        AppInstance.GetCurrent().Activated += (_, e) => App.HandleRedirectedActivation(e);
-
-        WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(_ => new App());
+        var initialArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
+        Application.Start(_ => new App(initialArgs));
     }
 
     private static bool RedirectIfNotMain()

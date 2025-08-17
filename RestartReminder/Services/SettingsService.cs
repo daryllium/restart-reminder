@@ -1,43 +1,165 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
 using RestartReminder.Models;
 using Windows.Storage;
 
 namespace RestartReminder.Services;
 
-public class SettingsService
+public sealed class SettingsService
 {
-    private static readonly ApplicationDataContainer Local = ApplicationData.Current.LocalSettings;
-    private const string P = "RR_";
+    public static SettingsService Instance { get; } = new();
 
-    public static Settings Load()
+    private const string Key = "app.settings.v1";
+    private readonly ApplicationDataContainer _localSettings = ApplicationData
+        .Current
+        .LocalSettings;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        Settings settings = new();
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
 
-        if (Local.Values.TryGetValue(P + "ReminderThresholdInMinutes", out var v1))
-            settings.ReminderThresholdInMinutes = Convert.ToInt32(v1);
+    private readonly object _gate = new();
+    private Settings _current = new();
+    private string _lastSavedJson = string.Empty;
 
-        if (Local.Values.TryGetValue(P + "RunOnStartup", out var v2))
-            settings.RunOnStartup = Convert.ToBoolean(v2);
+    public bool HasLoaded { get; private set; }
+    public event EventHandler<Settings>? Changed;
 
-        if (Local.Values.TryGetValue(P + "DefaultSnoozeMinutes", out var v3))
-            settings.DefaultSnoozeMinutes = Convert.ToInt32(v3);
-
-        return Coerce(settings);
+    public Settings Current
+    {
+        get
+        {
+            lock (_gate)
+                return _current;
+        }
     }
 
-    public static void Save(Settings settings)
+    private SettingsService() { }
+
+    public bool Load()
     {
-        settings = Coerce(settings);
-        Local.Values[P + "ReminderThresholdInMinutes"] = settings.ReminderThresholdInMinutes;
-        Local.Values[P + "RunOnStartup"] = settings.RunOnStartup;
-        Local.Values[P + "DefaultSnoozeMinutes"] = settings.DefaultSnoozeMinutes;
+        bool changed = false;
+
+        lock (_gate)
+        {
+            try
+            {
+                string? raw = _localSettings.Values.TryGetValue(Key, out var obj)
+                    ? obj as string
+                    : null;
+
+                Settings loadedSettings;
+
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    var parsedJson = JsonSerializer.Deserialize<Settings>(raw, JsonOptions);
+                    loadedSettings = parsedJson ?? new Settings();
+                }
+                else
+                {
+                    loadedSettings = new Settings();
+                }
+
+                _current = MigrateIfNeeded(loadedSettings);
+                _current.Normalize();
+
+                var normalizedJson = JsonSerializer.Serialize(_current, JsonOptions);
+
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    _localSettings.Values[Key] = _lastSavedJson;
+                    _lastSavedJson = normalizedJson;
+                    changed = true;
+                }
+                else
+                {
+                    if (!string.Equals(normalizedJson, raw, StringComparison.Ordinal))
+                    {
+                        _localSettings.Values[Key] = normalizedJson;
+                        _lastSavedJson = normalizedJson;
+                        changed = true;
+                    }
+                    else
+                    {
+                        _lastSavedJson = raw!;
+                    }
+                }
+            }
+            catch
+            {
+                _current = new Settings();
+                _current.Normalize();
+                _lastSavedJson = JsonSerializer.Serialize(_current, JsonOptions);
+                _localSettings.Values[Key] = _lastSavedJson;
+                changed = true;
+            }
+            finally
+            {
+                HasLoaded = true;
+            }
+        }
+
+        if (changed)
+            Changed?.Invoke(this, _current);
+        return changed;
     }
 
-    private static Settings Coerce(Settings settings)
+    public bool Edit(Action<Settings> mutate)
     {
-        settings.ReminderThresholdInMinutes = Math.Max(1, settings.ReminderThresholdInMinutes);
-        settings.DefaultSnoozeMinutes = Math.Max(1, settings.DefaultSnoozeMinutes);
+        if (mutate is null)
+            return false;
 
+        bool changed;
+        Settings snapshot;
+
+        lock (_gate)
+        {
+            mutate(_current);
+            _current.Normalize();
+
+            var newJson = JsonSerializer.Serialize(_current, JsonOptions);
+            changed = !string.Equals(newJson, _lastSavedJson, StringComparison.Ordinal);
+            if (changed)
+            {
+                _localSettings.Values[Key] = newJson;
+                _lastSavedJson = newJson;
+            }
+            snapshot = _current;
+        }
+
+        if (changed)
+            Changed?.Invoke(this, snapshot);
+        return changed;
+    }
+
+    public bool Reset()
+    {
+        return Edit(settings =>
+        {
+            var defaults = new Settings();
+            {
+                settings.Version = defaults.Version;
+                settings.InitialReminderMinutes = defaults.InitialReminderMinutes;
+                settings.SnoozeMinutes = defaults.SnoozeMinutes;
+                settings.RunOnStartup = defaults.RunOnStartup;
+            }
+        });
+    }
+
+    private static Settings MigrateIfNeeded(Settings settings)
+    {
+        if (settings.Version != Settings.CurrentVersion)
+            settings.Version = Settings.CurrentVersion;
+
+        settings.Normalize();
         return settings;
     }
 }
